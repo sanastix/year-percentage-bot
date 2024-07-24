@@ -21,8 +21,8 @@ public class YearPercentageBot extends TelegramLongPollingBot {
 
     private static final String START_BOT_REQUEST = "Start this bot";
     private static final String STOP_BOT_REQUEST = "Stop this bot";
-    private boolean botRunning = false;
-    private Long chatId = null;
+    private static boolean botRunning = false;
+    private static Long chatId = null;
 
     @Override
     public void onUpdateReceived(Update update) {
@@ -76,8 +76,7 @@ public class YearPercentageBot extends TelegramLongPollingBot {
         return response;
     }
 
-    //@Scheduled(cron = "0 0 9 * * ?")
-    @Scheduled(cron = "* * * * * *")
+    @Scheduled(cron = "0 0 9 * * ?")
     public void sendDailyMessage() {
         if (!botRunning || chatId == null) return;
         long daysPassed = ChronoUnit.DAYS.between(LocalDate.of(LocalDate.now().getYear(), 1, 1), LocalDate.now());
