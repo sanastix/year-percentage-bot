@@ -1,11 +1,12 @@
 package com.example.year_percentage_bot;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
@@ -23,6 +24,12 @@ public class YearPercentageBot extends TelegramLongPollingBot {
     private static final String STOP_BOT_REQUEST = "Stop this bot";
     private static boolean botRunning = false;
     private static Long chatId = null;
+    private final BotConfig config;
+
+    @Autowired
+    public YearPercentageBot(BotConfig config) {
+        this.config = config;
+    }
 
     @Override
     public void onUpdateReceived(Update update) {
@@ -49,7 +56,7 @@ public class YearPercentageBot extends TelegramLongPollingBot {
                 chatId = message.getChatId();
                 return getStopBotCommandMessage(message);
             default:
-                return new SendMessage(String.valueOf(message.getChatId()), ":)");
+                return new SendMessage(String.valueOf(message.getChatId()), message.getText() + " :)");
         }
     }
 
@@ -104,11 +111,11 @@ public class YearPercentageBot extends TelegramLongPollingBot {
 
     @Override
     public String getBotUsername() {
-        return "year_percentage_bot";
+        return config.getBotUsername();
     }
 
     public String getBotToken() {
-        return "7338831089:AAG6Sv2ATHbN8Sm-GVEeFyW0WH7GNQ97r_0";
+        return config.getBotToken();
     }
 
 }
