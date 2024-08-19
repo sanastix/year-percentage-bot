@@ -11,24 +11,30 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Component
 public class YearPercentageBot extends TelegramLongPollingBot {
 
+    private static final Logger logger = LoggerFactory.getLogger(YearPercentageBot.class);
     private static final String START_BOT_REQUEST = "Start this bot";
     private static final String STOP_BOT_REQUEST = "Stop this bot";
-    private static boolean botRunning = false;
-    private static Long chatId = null;
+    //private static boolean botRunning = false;
+    //private static Long chatId = null;
     private final BotConfig config;
+    private final BotUserRepository botUserRepository;
 
     @Autowired
-    public YearPercentageBot(BotConfig config) {
+    public YearPercentageBot(BotConfig config, BotUserRepository botUserRepository) {
         this.config = config;
+        this.botUserRepository = botUserRepository;
     }
 
     @Override
@@ -38,22 +44,26 @@ public class YearPercentageBot extends TelegramLongPollingBot {
             try {
                 execute(getResponseMessage(message));
             } catch (TelegramApiException e) {
-                e.printStackTrace();
+                logger.error("Failed to send response message to chatId: {}", message.getChatId(), e);
             }
         }
     }
 
     private SendMessage getResponseMessage(Message message) {
+        Long chatId = message.getChatId();
+        Optional<BotUser> botUserOptional = botUserRepository.findByChatId(chatId);
+        BotUser botUser = botUserOptional.orElseGet(() -> new BotUser(chatId, false));
+
         switch (message.getText()) {
             case "/start":
                 return getStartCommandMessage(message);
             case START_BOT_REQUEST:
-                botRunning = true;
-                chatId = message.getChatId();
+                botUser.setBotRunning(true);
+                botUserRepository.save(botUser);
                 return getStartBotCommandMessage(message);
             case STOP_BOT_REQUEST:
-                botRunning = false;
-                chatId = message.getChatId();
+                botUser.setBotRunning(false);
+                botUserRepository.save(botUser);
                 return getStopBotCommandMessage(message);
             default:
                 return new SendMessage(String.valueOf(message.getChatId()), message.getText() + " :)");
@@ -83,18 +93,25 @@ public class YearPercentageBot extends TelegramLongPollingBot {
         return response;
     }
 
-    @Scheduled(cron = "0 0 9 * * ?")
+    @Scheduled(cron = "* * * * * ?")
+    //@Scheduled(cron = "0 0 9 * * ?")
     public void sendDailyMessage() {
-        if (!botRunning || chatId == null) return;
-        long daysPassed = ChronoUnit.DAYS.between(LocalDate.of(LocalDate.now().getYear(), 1, 1), LocalDate.now());
-        long totalDays = LocalDate.now().isLeapYear() ? 366 : 365;
-        double percentage = (double) daysPassed / totalDays * 100;
-        String messageText = String.format("%.2f%% of the year has already passed", percentage);
-        SendMessage message = new SendMessage(String.valueOf(chatId), messageText);
-        try {
-            execute(message);
-        } catch (TelegramApiException e) {
-            e.printStackTrace();
+        logger.info("Scheduled task started");
+        List<BotUser> botUsers = botUserRepository.findAll();
+        for (BotUser botUser : botUsers) {
+            if (botUser.isBotRunning()) {
+                long daysPassed = ChronoUnit.DAYS.between(LocalDate.of(LocalDate.now().getYear(), 1, 1), LocalDate.now());
+                long totalDays = LocalDate.now().isLeapYear() ? 366 : 365;
+                double percentage = (double) daysPassed / totalDays * 100;
+                String messageText = String.format("%.2f%% of the year has already passed", percentage);
+                SendMessage message = new SendMessage(String.valueOf(botUser.getChatId()), messageText);
+                try {
+                    execute(message);
+                    logger.info("Message sent successfully to chatId: " + botUser.getChatId());
+                } catch (TelegramApiException e) {
+                    logger.error("Failed to send message", e);
+                }
+            }
         }
     }
 
