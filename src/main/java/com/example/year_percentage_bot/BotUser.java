@@ -5,10 +5,12 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Getter
 @Setter
+@NoArgsConstructor
 @Entity
 public class BotUser {
 
@@ -18,8 +20,6 @@ public class BotUser {
 
     private Long chatId;
     private boolean botRunning;
-
-    public BotUser() {}
 
     public BotUser(Long chatId, boolean botRunning) {
         this.chatId = chatId;
